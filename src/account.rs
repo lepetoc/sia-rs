@@ -1,16 +1,32 @@
-/// Single generic error for invalid Account fields.
-#[derive(Debug)]
-pub struct AccountError(String);
+/// Reasons an Account cannot be constructed.
+#[derive(Debug, PartialEq, Eq)]
+pub enum AccountError {
+    /// Account number length outside 3-16 characters (5.5.1.6.1).
+    InvalidLength(usize),
+    /// Account number contains non-hexadecimal characters (5.5.1.6.1).
+    InvalidCharacters(String),
+}
 
 impl std::fmt::Display for AccountError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        match self {
+            AccountError::InvalidLength(len) => {
+                write!(f, "account number must be 3-16 characters, got {len}")
+            }
+            AccountError::InvalidCharacters(number) => {
+                write!(
+                    f,
+                    "account number must contain only hexadecimal digits, got '{number}'"
+                )
+            }
+        }
     }
 }
 
 impl std::error::Error for AccountError {}
 
 /// A PE account: identity fields plus the running sequence number (5.5.1.5, 5.5.1.6).
+#[derive(Debug)]
 pub struct Account {
     account_number: String,
     prefix: String,
@@ -28,14 +44,10 @@ impl Account {
     ) -> Result<Self, AccountError> {
         let len = account_number.len();
         if !(3..=16).contains(&len) {
-            return Err(AccountError(format!(
-                "account number must be 3-16 characters, got {len}"
-            )));
+            return Err(AccountError::InvalidLength(len));
         }
         if !account_number.chars().all(|c| c.is_ascii_hexdigit()) {
-            return Err(AccountError(format!(
-                "account number must contain only hexadecimal digits, got '{account_number}'"
-            )));
+            return Err(AccountError::InvalidCharacters(account_number.to_string()));
         }
 
         Ok(Account {
@@ -46,15 +58,15 @@ impl Account {
         })
     }
 
-    /// Advances and returns the next sequence number as a 4-digit string.
+    /// Advances and returns the next sequence number.
     /// Wraps 9999 -> 0001, skipping the reserved 0000 (5.5.1.5).
-    pub(crate) fn next_sequence(&mut self) -> String {
+    pub(crate) fn next_sequence(&mut self) -> u16 {
         self.sequence = if self.sequence >= 9999 {
             1
         } else {
             self.sequence + 1
         };
-        format!("{:04}", self.sequence)
+        self.sequence
     }
 
     /// Builds Rrcvr+Lpref+#acct in the order required by the standard.
