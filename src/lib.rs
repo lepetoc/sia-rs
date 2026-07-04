@@ -1,21 +1,30 @@
 use chrono::Utc;
 
-pub fn calculate_table() -> [u16; 256] {
+const CRC_POLY: u16 = 0xA001;
+const START_MARKER: u8 = 0x0A;
+const END_MARKER: u8 = 0x0D;
+
+pub const fn calculate_table() -> [u16; 256] {
     let mut table: [u16; 256] = [0; 256];
-    for i in 0..=255 {
+    let mut i = 0;
+    while i < 256 {
         let mut temp = i as u16;
-        for _ in 0..8 {
-            if temp & 1 == 0b1 {
-                temp = temp >> 1;
-                temp = temp ^ 0xA001;
-            } else {
-                temp = temp >> 1;
+        let mut j = 0;
+        while j < 8 {
+            let carry = temp & 1;
+            temp >>= 1;
+            if carry == 1 {
+                temp ^= CRC_POLY;
             }
+            j += 1;
         }
         table[i] = temp;
+        i += 1;
     }
     table
 }
+
+pub const CRC_TABLE: [u16; 256] = calculate_table();
 
 pub fn crc16(data: &[u8], table: &[u16; 256]) -> u16 {
     let mut crc: u16 = 0;
@@ -31,7 +40,6 @@ fn generate_timestamp() -> String {
 }
 
 pub fn build_message(
-    table: &[u16; 256],
     id_token: &str,
     sequence: &str,
     account_line: &str,
@@ -40,14 +48,14 @@ pub fn build_message(
     let timestamp = generate_timestamp();
     let body = format!("\"{id_token}\"{sequence}{account_line}{data_block}{timestamp}");
 
-    let crc = crc16(body.as_bytes(), table);
+    let crc = crc16(body.as_bytes(), &CRC_TABLE);
     let length = format!("{:04X}", body.len());
 
     let mut message = Vec::with_capacity(body.len() + 10);
-    message.push(0x0A);
+    message.push(START_MARKER);
     message.extend(format!("{crc:04X}").into_bytes());
     message.extend(length.into_bytes());
     message.extend(body.into_bytes());
-    message.push(0x0D);
+    message.push(END_MARKER);
     message
 }
