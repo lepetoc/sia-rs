@@ -1,9 +1,7 @@
-use sia_rs::build_message;
+use sia_rs::{Account, Client};
 use std::io::prelude::*;
 use std::net::TcpStream;
 
-const ID_TOKEN: &str = "SIA-DCS";
-const SEQUENCE: &str = "0001";
 const EXPECTED_ARGS: usize = 4;
 
 fn main() -> std::io::Result<()> {
@@ -13,14 +11,13 @@ fn main() -> std::io::Result<()> {
         eprintln!("Exemple: {} 56789 192.168.1.191:5555 NFA0001", args[0]);
         std::process::exit(1);
     }
-    let account = &args[1];
+    let account_number = &args[1];
     let address = &args[2];
     let code = &args[3];
 
-    let account_line = format!("L0#{account}");
-    let data_block = format!("[#{account}|{code}]");
-
-    let message = build_message(ID_TOKEN, SEQUENCE, &account_line, &data_block);
+    let account = Account::new(account_number, "0", None);
+    let mut client = Client::new(account);
+    let message = client.build_event(code);
 
     let mut stream = TcpStream::connect(address)?;
     stream.write_all(&message)?;
