@@ -83,3 +83,78 @@ impl Account {
         format!("[#{}|{code}]", self.account_number)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn account(number: &str) -> Account {
+        Account::new(number, "0", None).unwrap()
+    }
+
+    #[test]
+    fn rejects_number_shorter_than_3() {
+        assert_eq!(
+            Account::new("12", "0", None).unwrap_err(),
+            AccountError::InvalidLength(2)
+        );
+    }
+
+    #[test]
+    fn rejects_number_longer_than_16() {
+        assert_eq!(
+            Account::new("12345678901234567", "0", None).unwrap_err(),
+            AccountError::InvalidLength(17)
+        );
+    }
+
+    #[test]
+    fn accepts_boundary_lengths() {
+        assert!(Account::new("123", "0", None).is_ok());
+        assert!(Account::new("1234567890ABCDEF", "0", None).is_ok());
+    }
+
+    #[test]
+    fn rejects_non_hex_characters() {
+        assert_eq!(
+            Account::new("12G4", "0", None).unwrap_err(),
+            AccountError::InvalidCharacters("12G4".to_string())
+        );
+    }
+
+    #[test]
+    fn accepts_lowercase_hex_digits() {
+        // Current behavior: lowercase passes validation and is sent as-is.
+        assert!(Account::new("abc", "0", None).is_ok());
+    }
+
+    #[test]
+    fn sequence_starts_at_1_and_increments() {
+        let mut account = account("1234");
+        assert_eq!(account.next_sequence(), 1);
+        assert_eq!(account.next_sequence(), 2);
+    }
+
+    #[test]
+    fn sequence_wraps_from_9999_to_1_skipping_0() {
+        let mut account = account("1234");
+        account.sequence = 9999;
+        assert_eq!(account.next_sequence(), 1);
+    }
+
+    #[test]
+    fn account_line_without_receiver_omits_r() {
+        assert_eq!(account("1234").account_line(), "L0#1234");
+    }
+
+    #[test]
+    fn account_line_with_receiver_starts_with_r() {
+        let account = Account::new("1234", "1", Some("2")).unwrap();
+        assert_eq!(account.account_line(), "R2L1#1234");
+    }
+
+    #[test]
+    fn data_block_repeats_account_number() {
+        assert_eq!(account("1234").data_block("NFA0001"), "[#1234|NFA0001]");
+    }
+}

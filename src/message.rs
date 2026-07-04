@@ -56,3 +56,74 @@ pub fn build_message(
         timestamp,
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::TimeZone;
+
+    fn fixed_timestamp() -> DateTime<Utc> {
+        Utc.with_ymd_and_hms(2024, 1, 2, 3, 4, 5).unwrap()
+    }
+
+    #[test]
+    fn body_contains_all_fields_in_order() {
+        let body = build_body(
+            SIA_DCS_TOKEN,
+            "0001",
+            "L0#1234",
+            "[#1234|NFA0001]",
+            fixed_timestamp(),
+        );
+        assert_eq!(
+            body,
+            "\"SIA-DCS\"0001L0#1234[#1234|NFA0001]_03:04:05,01-02-2024"
+        );
+    }
+
+    #[test]
+    fn timestamp_is_zero_padded_utc() {
+        let body = build_body(
+            "",
+            "",
+            "",
+            "",
+            Utc.with_ymd_and_hms(2025, 12, 31, 23, 59, 9).unwrap(),
+        );
+        assert_eq!(body, "\"\"_23:59:09,12-31-2025");
+    }
+
+    #[test]
+    fn frame_wraps_body_with_markers_crc_and_length() {
+        // CRC and length computed with an independent implementation.
+        let framed = frame("123456789");
+        let mut expected = vec![0x0A];
+        expected.extend(b"BB3D");
+        expected.extend(b"0009");
+        expected.extend(b"123456789");
+        expected.push(0x0D);
+        assert_eq!(framed, expected);
+    }
+
+    #[test]
+    fn frame_length_field_is_hexadecimal() {
+        let body = "x".repeat(255);
+        let framed = frame(&body);
+        // Skip start marker (1) and CRC (4): the next 4 bytes are the length.
+        assert_eq!(&framed[5..9], b"00FF");
+    }
+
+    #[test]
+    fn build_message_composes_body_and_frame() {
+        let message = build_message(
+            SIA_DCS_TOKEN,
+            "0001",
+            "L0#1234",
+            "[#1234|NFA0001]",
+            fixed_timestamp(),
+        );
+        // Golden vector: CRC B222 / length 0037 computed independently.
+        let expected = b"\x0AB2220037\"SIA-DCS\"0001L0#1234[#1234|NFA0001]_03:04:05,01-02-2024\x0D";
+        assert_eq!(message, expected);
+    }
+}

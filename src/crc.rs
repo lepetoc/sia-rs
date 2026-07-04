@@ -30,3 +30,26 @@ pub fn crc16(data: &[u8]) -> u16 {
     }
     crc
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_input_is_zero() {
+        assert_eq!(crc16(b""), 0x0000);
+    }
+
+    #[test]
+    fn matches_crc16_arc_check_value() {
+        // Standard check value for CRC-16/ARC (poly 0xA001 reflected, init 0).
+        assert_eq!(crc16(b"123456789"), 0xBB3D);
+    }
+
+    #[test]
+    fn table_first_entries() {
+        assert_eq!(CRC_TABLE[0], 0x0000);
+        assert_eq!(CRC_TABLE[1], 0xC0C1);
+        assert_eq!(CRC_TABLE[255], 0x4040);
+    }
+}
