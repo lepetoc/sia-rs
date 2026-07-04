@@ -15,7 +15,13 @@ fn main() -> std::io::Result<()> {
     let address = &args[2];
     let code = &args[3];
 
-    let account = Account::new(account_number, "0", None);
+    let account = match Account::new(account_number, "0", None) {
+        Ok(account) => account,
+        Err(e) => {
+            eprintln!("Invalid account: {e}");
+            std::process::exit(1);
+        }
+    };
     let mut client = Client::new(account);
     let message = client.build_event(code);
 
