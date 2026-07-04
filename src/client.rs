@@ -1,3 +1,5 @@
+use chrono::{DateTime, Utc};
+
 use crate::account::Account;
 use crate::message::{SIA_DCS_TOKEN, build_message};
 
@@ -5,11 +7,21 @@ use crate::message::{SIA_DCS_TOKEN, build_message};
 /// Holds no connection: sending bytes stays the caller's responsibility.
 pub struct Client {
     account: Account,
+    now: fn() -> DateTime<Utc>,
 }
 
 impl Client {
     pub fn new(account: Account) -> Self {
-        Client { account }
+        Client {
+            account,
+            now: Utc::now,
+        }
+    }
+
+    /// Like `new`, but with an explicit time source for the message
+    /// timestamps. Intended for tests and replay scenarios.
+    pub fn with_clock(account: Account, now: fn() -> DateTime<Utc>) -> Self {
+        Client { account, now }
     }
 
     /// Builds a complete SIA-DCS event message, advancing the sequence number.
@@ -17,6 +29,12 @@ impl Client {
         let sequence = self.account.next_sequence();
         let account_line = self.account.account_line();
         let data_block = self.account.data_block(code);
-        build_message(SIA_DCS_TOKEN, &sequence, &account_line, &data_block)
+        build_message(
+            SIA_DCS_TOKEN,
+            &sequence,
+            &account_line,
+            &data_block,
+            (self.now)(),
+        )
     }
 }
