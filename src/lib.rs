@@ -50,4 +50,4 @@ pub fn build_message(
     message.extend(body.into_bytes());
     message.push(0x0D);
     message
-}}
+}
