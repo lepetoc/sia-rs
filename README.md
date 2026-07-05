@@ -87,3 +87,12 @@ match check_response(&response_bytes) {
 
 Licensed under either of [MIT](LICENSE-MIT) or [Apache 2.0](LICENSE-APACHE)
 at your option.
+
+## License
+
+This project is licensed under either of
+
+- [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+- [MIT License](https://opensource.org/license/MIT)
+
+at your option.
