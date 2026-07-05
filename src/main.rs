@@ -1,4 +1,4 @@
-use sia_rs::{Account, Client};
+use sia_rs::{Account, Client, check_response};
 use std::io::prelude::*;
 use std::net::TcpStream;
 
@@ -30,6 +30,15 @@ fn main() -> std::io::Result<()> {
 
     let mut buffer = [0; 128];
     let bytes_read = stream.read(&mut buffer)?;
-    println!("{}", String::from_utf8_lossy(&buffer[..bytes_read]));
+    let response = &buffer[..bytes_read];
+    println!("Raw response: {}", String::from_utf8_lossy(response));
+
+    match check_response(response) {
+        Ok(()) => println!("Event acknowledged (ACK)."),
+        Err(e) => {
+            eprintln!("Event not accepted: {e}");
+            std::process::exit(1);
+        }
+    }
     Ok(())
 }
