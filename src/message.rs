@@ -9,6 +9,10 @@ const END_MARKER: u8 = 0x0D;
 /// Will become an enum variant once other formats are added.
 pub const SIA_DCS_TOKEN: &str = "SIA-DCS";
 
+/// Token for the unencrypted supervision (link test) message (5.5.2.1.1).
+/// Always paired with sequence "0000" and an empty data block.
+pub const SUPERVISION_TOKEN: &str = "NULL";
+
 fn format_timestamp(timestamp: DateTime<Utc>) -> String {
     timestamp.format("_%H:%M:%S,%m-%d-%Y").to_string()
 }
